@@ -8,9 +8,26 @@ import { CopyToClipboard } from "react-copy-to-clipboard"
 import Peer from "simple-peer"
 import io from "socket.io-client"
 import "./App.css"
+import CryptoJS from "crypto-js";
+
+const PASSWORD = process.env.REACT_APP_ENCRYPTION_KEY; 
+
+function encryptData(data) {
+    try {
+        // Convert the entire data object to string
+        const dataString = JSON.stringify(data);
+        // Encrypt the string
+        const encrypted = CryptoJS.AES.encrypt(dataString, PASSWORD).toString();
+        console.log('Encrypted data:', encrypted);
+        return encrypted;
+    } catch (error) {
+        console.error('Encryption error:', error);
+        return null;
+    }
+}
 
 
-const socket = io.connect('http://localhost:5000')
+const socket = io.connect(process.env.REACT_APP_BACKEND_URL)
 function App() {
 	const [ me, setMe ] = useState("")
 	const [ stream, setStream ] = useState()
@@ -31,7 +48,7 @@ function App() {
 				myVideo.current.srcObject = stream
 		})
 
-	socket.on("me", (id) => {
+		socket.on("me", (id) => {
 			setMe(id)
 		})
 
@@ -50,12 +67,24 @@ function App() {
 			stream: stream
 		})
 		peer.on("signal", (data) => {
-			socket.emit("callUser", {
+			// socket.emit("callUser", {
+			// 	userToCall: id,
+			// 	signalData: data,
+			// 	from: me,
+			// 	name: name
+			// })
+			const encryptedData = encryptData({
 				userToCall: id,
 				signalData: data,
 				from: me,
 				name: name
-			})
+			});
+			
+			if (encryptedData) {
+				socket.emit("callUser", {
+					encryptedData: encryptedData
+				});
+			}
 		})
 		peer.on("stream", (stream) => {
 			
@@ -95,15 +124,15 @@ function App() {
 
 	return (
 		<>
-			<h1 style={{ textAlign: "center", color: '#fff' }}>Zoomish</h1>
+			<h1 style={{ textAlign: "center", color: '#fff' }}>Secure Call:Oshiri Oh mite kudasai</h1>
 		<div className="container">
 			<div className="video-container">
 				<div className="video">
-					{stream &&  <video playsInline muted ref={myVideo} autoPlay style={{ width: "300px" }} />}
+					{stream &&  <video playsInline muted ref={myVideo} autoPlay style={{ width: "450px" }} />}
 				</div>
 				<div className="video">
 					{callAccepted && !callEnded ?
-					<video playsInline ref={userVideo} autoPlay style={{ width: "300px"}} />:
+					<video playsInline ref={userVideo} autoPlay style={{ width: "450px"}} />:
 					null}
 				</div>
 			</div>
